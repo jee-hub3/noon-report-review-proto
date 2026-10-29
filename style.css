@@ -104,19 +104,6 @@ code, .code { font: 400 var(--fs-caption2)/var(--lh-caption2) var(--font-mono); 
 .gnb a[aria-current="page"], .gnb a[aria-current="page"]:hover { color: var(--accent); font-weight: 700; background: transparent; }
 .gn { font: 600 var(--fs-caption)/1 var(--font-sans); color: var(--text-3); }
 .gnb a[aria-current="page"] .gn { color: var(--accent); }
-.bar .gnb { margin-left: auto; }
-/* 상단 [? 다시 보기]: 첫 방문 투어(tour.js)를 다시 띄움 */
-.tour-again {
-  display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 40px; padding: 0 var(--sp-3);
-  border: 0; border-radius: var(--r-inner); background: transparent; color: var(--text-2);
-  font: 500 var(--fs-callout)/1 var(--font-sans); white-space: nowrap; cursor: pointer;
-  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-}
-.tour-again:hover { color: var(--text); background: var(--fill-2); }
-.tq {
-  display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none;
-  border: 1.5px solid currentColor; border-radius: 50%; font: 700 11px/1 var(--font-sans);
-}
 
 /* ------------------------------------------------------------ page */
 body { min-height: 100vh; }
@@ -508,26 +495,6 @@ dialog.dlg h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-headline); line-hei
 dialog.dlg p { margin: 0 0 var(--sp-4); font-size: var(--fs-callout); line-height: var(--lh-callout); color: var(--text-2); }
 dialog.dlg .row { justify-content: flex-end; }
 
-/* ------------------------------------------------------------ 첫 방문 투어(tour.js) */
-/* 겹 순서: 어둡게 하는 층(9) < 헤더(10) < 클릭 막는 층(11, 상단 띠 아래부터) < 강조 테(12) < 말풍선(13).
-   그래서 상단 '실데이터 아님' 띠는 어느 단계에서도 가려지거나 흐려지지 않는다 */
-.tour-on .top { background: var(--surface); }
-/* 위치는 스크롤을 그대로 따라가야 하므로 전환 효과 없음(움직임 줄이기 설정의 전역 전환 규칙도 받지 않음) */
-.tour-hole, .tour-block, .tour-ring, .tour-pop { transition: none; }
-.tour-hole { position: fixed; z-index: 9; border-radius: var(--r-md); box-shadow: 0 0 0 200vmax rgba(29, 29, 31, .45); pointer-events: none; }
-.tour-block { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; }
-.tour-ring { position: fixed; z-index: 12; border-radius: var(--r-md); box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--fill-selected); pointer-events: none; }
-.tour-ring[hidden] { display: none; }
-.tour-pop {
-  position: fixed; z-index: 13; width: min(360px, calc(100vw - 32px)); padding: var(--sp-4) var(--sp-5) var(--sp-3);
-  background: var(--surface); color: var(--text); border-radius: var(--r-lg); box-shadow: var(--shadow-pop);
-}
-.tour-count { margin: 0 0 var(--sp-1); font: 600 var(--fs-caption)/var(--lh-caption) var(--font-sans); color: var(--text-2); }
-.tour-text { margin: 0 0 var(--sp-3); font: 500 var(--fs-body)/var(--lh-body) var(--font-sans); }
-.tour-actions { display: flex; align-items: center; gap: var(--sp-2); }
-.tour-nav { display: flex; gap: var(--sp-2); margin-left: auto; }
-.tour-pop [hidden] { display: none; }
-
 /* ------------------------------------------------------------ footer */
 .foot {
   width: 100%; max-width: var(--page-max); margin: var(--sp-12) auto var(--sp-8); padding: var(--sp-4) var(--gutter) 0;
@@ -542,29 +509,29 @@ dialog.dlg .row { justify-content: flex-end; }
 @media (max-width: 1023px) {
   :root { --gutter: 20px; }
   .gnb a { padding: 0 var(--sp-3); font-size: var(--fs-callout); }
-  .brand-sub { display: none; }
 }
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr auto; grid-template-areas: "id go" "metrics metrics" "viz viz"; align-items: start; }
   .bundle { position: static; }
 }
+@media (max-width: 860px) {
+  .brand-sub { display: none; }
+}
 @media (max-width: 1050px) {
   .s3 { grid-template-columns: minmax(0, 1fr); }
 }
-/* 861px 미만: 서비스 이름, 메뉴 네 개, [다시 보기]가 한 줄에 다 들어가지 않으므로 서비스 이름을 숨기고 메뉴를 남은 폭 전체에 펼침 */
-@media (max-width: 860px) {
+/* 761px 미만: 서비스 이름과 메뉴 네 개가 한 줄에 다 들어가지 않으므로 서비스 이름을 숨기고 메뉴를 가로 전체에 펼침 */
+@media (max-width: 760px) {
   .brand { display: none; }
-  .bar .gnb { flex: 1 1 auto; margin-left: 0; justify-content: space-between; }
+  .gnb { width: 100%; justify-content: space-between; }
   .gnb a { padding: 0 var(--sp-2); }
   .gnb a[aria-current="page"], .gnb a[aria-current="page"]:hover { background: var(--fill-selected); }
 }
 @media (max-width: 640px) {
   :root { --gutter: 16px; --header-h: 136px; --fs-title1: 22px; --lh-title1: 28px; --fs-display: 28px; --lh-display: 34px; --fs-metric: 24px; --lh-metric: 30px; }
-  .bar { padding: 4px var(--gutter); min-height: 48px; column-gap: var(--sp-2); }
+  .bar { padding: 4px var(--gutter); min-height: 48px; }
   .gnb { display: grid; grid-template-columns: 1fr 1fr; gap: 2px var(--sp-1); padding: var(--sp-1) 0; }
   .gnb a { justify-content: center; font-size: var(--fs-footnote); }
-  /* [다시 보기]는 메뉴 두 줄 높이의 오른쪽 칸: ? 아래 글자 */
-  .tour-again { align-self: stretch; flex-direction: column; justify-content: center; gap: 4px; width: 56px; padding: 0; font-size: var(--fs-caption2); }
   main { padding-top: var(--sp-5); }
   th, td { padding: 10px; }
   th .th-cap { white-space: normal; }
@@ -593,14 +560,8 @@ dialog.dlg .row { justify-content: flex-end; }
   .ship-pick a { flex: none; }
   .foot { margin-top: var(--sp-8); }
 }
-/* 359px 이하(작은 휴대폰): 메뉴 글자를 한 단계 줄이고 [다시 보기]는 ? 아이콘만(이름은 aria-label) */
-@media (max-width: 359px) {
-  .gnb a { padding: 0 var(--sp-1); font-size: var(--fs-caption); }
-  .tour-again { width: 40px; }
-  .tour-again .tl { display: none; }
-}
 @media (pointer: coarse) {
-  .btn, .btn.sm, .gnb a, .tour-again, .ship-pick a, .seg-radio label, .rlist a { min-height: var(--touch-min); }
+  .btn, .btn.sm, .gnb a, .ship-pick a, .seg-radio label, .rlist a { min-height: var(--touch-min); }
   .row { gap: var(--sp-2); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -611,8 +572,6 @@ dialog.dlg .row { justify-content: flex-end; }
   .badge, .tag-mock, .scope { border: 1px solid CanvasText; }
   .sw { forced-color-adjust: none; }
   .gnb a[aria-current="page"], .ship-pick a[aria-current="true"] { outline: 2px solid CanvasText; }
-  .tour-ring { outline: 2px solid Highlight; }
-  .tour-pop { border: 1px solid CanvasText; }
 }
 
 /* design QA: halo behind chart labels, hero reason, fleet line */

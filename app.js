@@ -1047,7 +1047,7 @@
     var d = document.querySelector('#app .decide');
     var hgt = d && window.getComputedStyle(d).position === 'sticky' ? d.offsetHeight : 0;
     document.documentElement.style.setProperty('--sticky-bottom', hgt + 'px');
-    var top = document.querySelector('.top'); // 실제 sticky 헤더 높이(표기 띠 줄 수·터치 크기에 따라 다름)
+    var top = document.querySelector('.top'); // 실제 sticky 헤더 높이(메뉴 줄 수·터치 크기에 따라 다름)
     if (top && top.offsetHeight) document.documentElement.style.setProperty('--header-h', top.offsetHeight + 'px');
   }
   function revealCurrent() {

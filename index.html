@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>선대 기관 이상 징후 검토 — 프로토타입 (실데이터 아님)</title>
+<meta name="description" content="noon report(정오 보고)와 정비 기록으로 배별 정상 모델의 잔차를 관리도로 추적하는 프로토타입. 실데이터 아님 — 팀 생성 합성 자료.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="notice" role="note"><strong>실데이터 아님</strong> — 팀 생성 합성 자료(가상 선박) · 실제 선사·선박·사람과 무관</div>
+  <div class="bar">
+    <div class="brand">
+      <span class="brand-title">선대 기관 이상 징후 검토</span>
+      <span class="brand-sub">프로토타입 · 기준일 <span id="refdate"></span>(합성)</span>
+    </div>
+    <nav class="tabs" aria-label="화면">
+      <a href="#/fleet" data-tab="fleet"><span class="tn">1</span>선대 대시보드</a>
+      <a href="#/review" data-tab="review"><span class="tn">2</span>점검 순서</a>
+      <a href="#/reports" data-tab="reports"><span class="tn">3</span>보고 표준화·확인</a>
+      <a href="#/requests" data-tab="requests"><span class="tn">4</span>확인 요청·검토 기록</a>
+    </nav>
+  </div>
+</header>
+<main id="app" tabindex="-1"></main>
+<footer class="foot">
+  <p>표시되는 결과는 <strong>확인이 필요한 신호</strong>이며 고장 확정이나 선박 안전 상태의 판정이 아닙니다. 최종 판단은 공무감독과 기관장이 합니다.</p>
+  <p>실제 메일·정비 지시를 보내지 않으며 외부 언어모델을 호출하지 않습니다. 검토 기록은 이 브라우저에만 저장됩니다.
+    <button type="button" class="link" id="reset">시연 초기화</button></p>
+  <p>240 상황 합성 시험 결과와 파라미터: <a href="DELIVERY_AUDIT.json">DELIVERY_AUDIT.json</a> — 합성 자료 조건에서의 동작 확인이며 실제 선박의 탐지력이 아닙니다.</p>
+  <p class="muted">점검 순서 최적화(가용 시간·조치 효과 반영), 언어모델 추출·회신 해석, CUSUM 비교, 매뉴얼·사례 검색, 메일 자동 수집은 PoC 단계(2.5) 범위로 이 프로토타입에 없습니다.</p>
+</footer>
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<script src="data.js"></script>
+<script src="check.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

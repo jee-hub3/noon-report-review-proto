@@ -517,7 +517,7 @@ dialog.dlg .row { justify-content: flex-end; }
 .cm-on .top { background: var(--surface); }
 /* 잠그며 생긴 스크롤 막대 자리(--cm-sbw)는 헤더 옆까지 띠·헤더 색으로 채워 어둡게 하는 층이 비치지 않게 */
 .cm-on .top::after {
-  content: ""; position: absolute; top: 0; bottom: 0; left: 100%; width: var(--cm-sbw, 0px);
+  content: ""; position: absolute; top: 0; bottom: -1px; left: 100%; width: var(--cm-sbw, 0px);
   background: linear-gradient(var(--notice-bg) 0 var(--cm-nh, 28px), var(--surface) 0);
 }
 /* 위치는 계산값 그대로(전환 효과 없음, 움직임 줄이기 설정의 전역 전환 규칙도 받지 않음) */

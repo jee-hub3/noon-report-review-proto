@@ -515,11 +515,16 @@ dialog.dlg .row { justify-content: flex-end; }
 .cm-on { overflow: hidden; }
 .cm-on body { overflow-x: visible; }
 .cm-on .top { background: var(--surface); }
+/* 잠그며 생긴 스크롤 막대 자리(--cm-sbw)는 헤더 옆까지 띠·헤더 색으로 채워 어둡게 하는 층이 비치지 않게 */
+.cm-on .top::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 100%; width: var(--cm-sbw, 0px);
+  background: linear-gradient(var(--notice-bg) 0 var(--cm-nh, 28px), var(--surface) 0);
+}
 /* 위치는 계산값 그대로(전환 효과 없음, 움직임 줄이기 설정의 전역 전환 규칙도 받지 않음) */
 .cm-dim, .cm-block, .cm-ring, .cm-clip, .cm-item, .cm-pin, .cm-sheet { transition: none; }
 .cm-dim { position: fixed; inset: 0; z-index: 9; width: 100%; height: 100%; pointer-events: none; }
 .cm-shade { fill: rgba(29, 29, 31, .45); }
-.cm-block { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; touch-action: none; }
+.cm-block { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; touch-action: pinch-zoom; }
 .cm-ring { position: absolute; border-radius: var(--r-md); box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--fill-selected); pointer-events: none; }
 .cm-ring.cm-head { position: fixed; z-index: 12; }
 .cm-ring[hidden], .cm-pin[hidden] { display: none; }
@@ -554,7 +559,11 @@ dialog.dlg .row { justify-content: flex-end; }
 .cm-sheet-in { max-width: var(--page-max); margin: 0 auto; padding: var(--sp-3) var(--gutter); }
 .cm-legend { display: none; margin: 0 0 var(--sp-3); padding: 0; list-style: none; }
 .cm-legend li { display: flex; align-items: flex-start; gap: var(--sp-2); padding: 3px 0; font: 500 var(--fs-footnote)/var(--lh-footnote) var(--font-sans); }
-.cm-foot { display: flex; align-items: center; gap: var(--sp-3); }
+/* 바닥 판이 길어져 스크롤되어도(확대·가로 휴대폰) [닫기]는 판 아래에 붙어 보임. 홈 표시줄 자리만큼 띄움 */
+.cm-foot {
+  position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--sp-3);
+  padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--surface);
+}
 .cm-foot p { flex: 1 1 auto; margin: 0; font: 500 var(--fs-callout)/var(--lh-callout) var(--font-sans); color: var(--text-2); }
 .cm-foot .btn { flex: none; }
 /* 말풍선을 서로·헤더와 겹치지 않게 놓을 자리가 없으면(좁은 폭·낮은 창): 번호만 대상에 남기고 문구는 아래 목록으로 */
@@ -630,7 +639,7 @@ dialog.dlg .row { justify-content: flex-end; }
 /* 359px 이하(작은 휴대폰): 메뉴 글자를 한 단계 줄이고 [다시 보기]는 ? 아이콘만(이름은 aria-label) */
 @media (max-width: 359px) {
   .gnb a { padding: 0 var(--sp-1); font-size: var(--fs-caption); }
-  .tour-again { width: 40px; }
+  .tour-again { width: 44px; }
   .tour-again .tl { display: none; }
 }
 @media (pointer: coarse) {
@@ -646,7 +655,7 @@ dialog.dlg .row { justify-content: flex-end; }
   .sw { forced-color-adjust: none; }
   .gnb a[aria-current="page"], .ship-pick a[aria-current="true"] { outline: 2px solid CanvasText; }
   .cm-ring { outline: 2px solid Highlight; }
-  .cm-item, .cm-sheet { border: 1px solid CanvasText; }
+  .cm-item, .cm-sheet, .cm-item::before { border: 1px solid CanvasText; }
   .cm-no, .cm-pin { border: 1px solid CanvasText; }
 }
 

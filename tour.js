@@ -24,14 +24,20 @@
       return { left: left, top: t.top, right: t.right, bottom: t.bottom, width: t.right - left, height: t.height }; } };
   }
   // at: 가리킬 요소(여러 개면 묶은 상자), head: 헤더 안의 대상(말풍선·번호는 헤더 바로 아래 줄에 둠)
+  // text: 명세 표의 한 줄, sub: 둘째 줄(할 수 있는 일, 10/30 팀 결정. 기획서 2.3·2.4 문장을 줄인 것)
   var MARKS = [
     // 합성 자료 표기: 상단 띠는 10/30 팀 결정으로 없애고 바닥글로 옮겼으므로 화면 1 본문의 합성 선박 줄을 가리킴
-    { at: function () { return synthLine(); }, text: '모든 수치는 팀이 만든 합성 자료, 실제 선박·실데이터 아님' },
-    { at: function () { return q('#app .table-wrap'); }, text: '선박별 기대값 · 실제값 · 잔차 추세 · 지속 편차 여부' },
-    { at: function () { return qa('#app table.fleet tr > :nth-child(3)'); }, text: '우선 확인할 선박을 고르는 보조 정보, 고장확률 아님' },
+    { at: function () { return synthLine(); }, text: '모든 수치는 팀이 만든 합성 자료, 실제 선박·실데이터 아님',
+      sub: '가상 선박 자료로 보고 표준화 · 배기온도 편차 분석 · 확인 요청 초안을 시연' },
+    { at: function () { return q('#app .table-wrap'); }, text: '선박별 기대값 · 실제값 · 잔차 추세 · 지속 편차 여부',
+      sub: '배를 누르면 근거(며칠째 얼마나 벗어났는지)와 정비 이력으로' },
+    { at: function () { return qa('#app table.fleet tr > :nth-child(3)'); }, text: '우선 확인할 선박을 고르는 보조 정보, 고장확률 아님',
+      sub: '검토점수와 근거를 대조해 우선 확인할 선박을 선택' },
     // 분석 보류 배지: 보류 묶음 머리의 빗금 표시 '▨ 분석 보류 n척'(뒤에 '정상으로 넘기지 않음'이 이어짐. 표 바로 아래라 낮은 창에도 함께 들어감)
-    { at: function () { return holdLabel() || q('#app .badge.b-hold'); }, text: '자료 부족 · 계측 기준 불일치 선박은 정상으로 표시하지 않음' },
-    { head: true, at: function () { return qa('.gnb a[data-tab="review"], .gnb a[data-tab="reports"], .gnb a[data-tab="requests"]'); }, text: '2 점검 순서 → 3 원문 대조 · 승인 → 4 확인 질문 · 판단 기록(자동 전송 없음)' }
+    { at: function () { return holdLabel() || q('#app .badge.b-hold'); }, text: '자료 부족 · 계측 기준 불일치 선박은 정상으로 표시하지 않음',
+      sub: '자동 판단 대신 보류 사유·보완할 항목을 보이고 공무감독이 확인' },
+    { head: true, at: function () { return qa('.gnb a[data-tab="review"], .gnb a[data-tab="reports"], .gnb a[data-tab="requests"]'); }, text: '2 점검 순서 → 3 원문 대조 · 승인 → 4 확인 질문 · 판단 기록(자동 전송 없음)',
+      sub: '3은 누락 항목·확인 필요 사항을 표시, 4는 질문을 고치고 판단 사유를 기록' }
   ];
   var FOOT = '최종 점검 여부와 정비 조치는 공무감독과 기관장이 결정합니다';
   var M = 16, G = 12, GAP = 8, PAD = 6, RING = 6, PIN = 22;
@@ -61,7 +67,10 @@
 
   function build() {
     var u = {}, holder = document.createElement('div');
-    function item(m, i, cls) { return '<li' + cls + '><span class="cm-no" aria-hidden="true">' + (i + 1) + '</span><span class="cm-text">' + glue(m.text) + '</span></li>'; }
+    function item(m, i, cls) {
+      return '<li' + cls + '><span class="cm-no" aria-hidden="true">' + (i + 1) + '</span><span class="cm-body"><span class="cm-text">' + glue(m.text) +
+        '</span><span class="cm-sub">' + glue(m.sub) + '</span></span></li>';
+    }
     // 어둡게 하는 층: 본문 대상 넷(합성 선박 줄·선대 목록·검토점수 칸·보류 표시) 자리만 뚫은 가림막. 헤더(10)보다 아래(9)
     holder.innerHTML = '<svg class="cm-dim" aria-hidden="true" focusable="false"><defs><mask id="cmMask">' +
       '<rect width="100%" height="100%" fill="#fff"></rect>' + '<rect class="cm-hole" rx="10" fill="#000"></rect>'.repeat(BODY.length) +
@@ -118,49 +127,49 @@
     xs.forEach(function (x) { vert.push({ x: x, y: rv.top - PAD - G - s.h, side: 'above' }); });
     return i === 3 || i === 0 ? side.concat(vert) : vert.concat(side);
   }
-  // 겹치지 않는 자리를 고름: 말풍선끼리·본문 대상 테·헤더·바닥 줄과 겹치면 다음 후보. 헤더 대상 ⑤는 후보를 모두 시험하고
-  // 나머지(rest: ③ → ② → 보류 표시 → 합성 선박 줄)는 차례로 놓아, 다 놓이는 첫 조합을 씀. 없으면 null
+  // 겹치지 않는 자리를 고름: 말풍선끼리·본문 대상 테·헤더·바닥 줄과 겹치면 다음 후보. ⑤ → rest(③ → ② → 보류 표시 → 합성 선박 줄) 순서로
+  // 앞 후보부터 놓되, 뒤에서 막히면 앞의 다른 후보로 되돌아가 모든 조합을 시험한다(앞 후보가 먼저라 고르는 결과는 같은 순서). 없으면 null
   function arrange(R, S, A, rest) {
-    var guards = rest.map(function (i) { return grow(R[i], PAD + RING); });
+    var guards = rest.map(function (i) { return grow(R[i], PAD + RING); }), order = [4].concat(rest);
     function box(c, s) { return { left: c.x, top: c.y, right: c.x + s.w, bottom: c.y + s.h }; }
-    function free(b, placed) {
-      return b.left >= A.left && b.top >= A.top && b.right <= A.right && b.bottom <= A.bottom &&
-        !guards.some(function (g) { return hit(b, g); }) && !placed.some(function (p) { return hit(grow(b, GAP), p); });
-    }
-    var c5 = spots(4, R, S[4], A);
-    for (var a = 0; a < c5.length; a++) {
-      var b5 = box(c5[a], S[4]); if (!free(b5, [])) continue;
-      var P = [], placed = [b5], ok = true;
-      P[4] = { side: c5[a].side, box: b5 };
-      rest.forEach(function (i) {
-        if (!ok) return;
-        var c = spots(i, R, S[i], A), got = null;
-        for (var j = 0; j < c.length && !got; j++) { var b = box(c[j], S[i]); if (free(b, placed)) got = { side: c[j].side, box: b }; }
-        if (got) { P[i] = got; placed.push(got.box); } else ok = false;
+    var cand = order.map(function (i) {
+      return spots(i, R, S[i], A).map(function (c) { return { side: c.side, box: box(c, S[i]) }; }).filter(function (c) {
+        var b = c.box;
+        return b.left >= A.left && b.top >= A.top && b.right <= A.right && b.bottom <= A.bottom && !guards.some(function (g) { return hit(b, g); });
       });
-      if (ok) return P;
+    });
+    var P = [], placed = [];
+    function go(k) {
+      if (k === order.length) return true;
+      for (var j = 0; j < cand[k].length; j++) {
+        var c = cand[k][j];
+        if (placed.some(function (p) { return hit(grow(c.box, GAP), p); })) continue;
+        placed.push(c.box); P[order[k]] = c;
+        if (go(k + 1)) return true;
+        placed.pop();
+      }
+      delete P[order[k]];
+      return false;
     }
-    return null;
+    return go(0) ? P : null;
   }
-  // 말풍선 폭: 한 줄에 들어가면 한 줄 그대로, 넘치면 줄 수를 정해 두고 줄 길이가 고르게 되는 가장 좁은 폭(끝줄에 낱말 하나만 남지 않게)
+  // 말풍선 폭: 두 줄(문구·둘째 줄)이 각각 한 줄에 들어가면 그 폭, 넘치면 최대 폭일 때와 높이가 같은 가장 좁은 폭(줄 길이가 고르게)
   function fit(li, max) {
-    var cs = window.getComputedStyle(li), text = li.querySelector('.cm-text');
     li.style.left = '0px'; li.style.top = '0px'; li.style.maxWidth = 'none'; li.style.width = ''; li.style.whiteSpace = 'nowrap';
-    var one = Math.ceil(li.getBoundingClientRect().width) + 1, side = one - Math.floor(text.getBoundingClientRect().width), w = Math.min(one, max);
-    li.style.whiteSpace = '';
+    var one = Math.ceil(li.getBoundingClientRect().width) + 1, w = Math.min(one, max);
+    li.style.whiteSpace = ''; li.style.width = w + 'px';
     if (one > max) {
-      var n = Math.ceil((one - side) / (max - side));
-      var padV = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), lh = parseFloat(window.getComputedStyle(text).lineHeight) || 20;
-      w = Math.min(max, Math.ceil((one - side) / n) + side);
-      for (li.style.width = w + 'px'; Math.round((li.offsetHeight - padV) / lh) > n && w < max; li.style.width = w + 'px') w = Math.min(max, w + 8);
+      var h = li.offsetHeight;
+      for (; w - 8 >= 160; w -= 8) { li.style.width = (w - 8) + 'px'; if (li.offsetHeight > h) break; }
+      li.style.width = w + 'px';
     }
-    li.style.width = w + 'px'; li.style.maxWidth = '';
+    li.style.maxWidth = '';
     return { w: li.offsetWidth, h: li.offsetHeight };
   }
   // 넓은 폭: 말풍선 다섯. 합성 선박 줄(보류 묶음 아래)이 바닥 판 위에 들어오지 않는 낮은 창이면 ①만 바닥 판 목록에 두고 넷을 말풍선으로
   function wide(V, head) {
     setMode('wide'); ui.sheet.style.maxHeight = '';
-    var S = ui.items.map(function (li, i) { li.hidden = false; return fit(li, Math.floor(Math.min(i === 4 ? 440 : 360, V.w / 2 - 32))); });
+    var S = ui.items.map(function (li, i) { li.hidden = false; return fit(li, Math.floor(Math.min(i === 4 ? 560 : 440, V.w / 2 - 32))); });
     for (var pass = 0; pass < 2; pass++) {
       setListed(pass ? [0] : []); frame(head);
       var A = { left: M, top: head.bottom + G, right: V.w - M, bottom: V.h - ui.sheet.offsetHeight - GAP };
@@ -298,6 +307,8 @@
     ui.root.hidden = false; shownAt = window.location.href;
     var tw = q('#app .table-wrap'); if (tw && tw.scrollLeft) { ui.tableLeft = tw.scrollLeft; tw.scrollLeft = 0; }  // 옆으로 밀어 둔 표는 처음 칸부터
     layout(); ui.close.focus({ preventScroll: true });
+    // 나타날 때의 옅은 밝아짐(CSS)은 그림 틀이 멈춘 곳(숨은 탭 등)에서 멈춘 채 투명하게 남을 수 있으므로, 잠시 뒤 끝난 상태로 고정
+    var u = ui; window.setTimeout(function () { u.parts.forEach(function (e) { e.style.animation = 'none'; }); }, 400);
   }
   function start(fromButton) {
     if (ui) return;
@@ -351,7 +362,7 @@
   window.addEventListener('resize', schedule); window.addEventListener('load', schedule);
   document.addEventListener('keydown', onKey);
   var again = document.getElementById('tour-again'); if (again) again.addEventListener('click', function () { start(true); });
-  window.ProtoTour = { start: start, close: function () { close(); }, texts: MARKS.map(function (m) { return m.text; }), foot: FOOT, mode: function () { return ui ? ui.mode : null; },
+  window.ProtoTour = { start: start, close: function () { close(); }, texts: MARKS.map(function (m) { return m.text; }), subs: MARKS.map(function (m) { return m.sub; }), foot: FOOT, mode: function () { return ui ? ui.mode : null; },
     listed: function () { return ui ? ui.listed.slice() : null; } };
   if (!/(?:^|[?&])tour=off(?:&|$)/.test(window.location.search.slice(1)) && !seen()) {
     // 첫 방문 자동 표시는 화면 1에서. 다른 화면 주소로 들어왔으면 주소를 옮기지 않고, 처음 화면 1을 열 때 띄운다

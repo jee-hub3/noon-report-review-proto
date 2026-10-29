@@ -1,9 +1,9 @@
 {
  "synthetic": true,
- "note": "실데이터 아님 — 팀 생성 합성 자료",
- "interpretation": "합성 자료 조건에서의 동작 확인 — 실제 선박의 탐지력·오경보율이 아님. 실제 고장 라벨·실제 양식 미사용.",
- "generated_at": "2026-10-29T06:26:47+00:00",
- "code_version": "06afeb9",
+ "note": "실데이터 아님(팀 생성 합성 자료)",
+ "interpretation": "합성 자료 조건에서의 동작 확인이며 실제 선박의 탐지력·오경보율이 아님. 실제 고장 라벨·실제 양식 미사용.",
+ "generated_at": "2026-10-29T08:52:31+00:00",
+ "code_version": "ff4dccc",
  "trial_code_hash": "58a8dcb2f2404bed",
  "trial_code_files": [
   "proto/synth.py",
@@ -27,7 +27,7 @@
   ],
   "situations_per_condition": 60,
   "count": "검토 신호가 감시 구간에서 1회 이상 난 상황 수",
-  "primary_model": "선박별 Ridge + EWMA(2회 연속 초과), 보류 규칙 미적용 — 2.6.5 기술과 동일",
+  "primary_model": "선박별 Ridge + EWMA(2회 연속 초과), 보류 규칙 미적용(2.6.5 기술과 동일)",
   "secondary": "학습 범위 이탈 보류 규칙 적용 시(범위 밖 날은 EWMA 건너뜀)"
  },
  "params": {

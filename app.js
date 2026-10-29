@@ -1,4 +1,4 @@
-/* 선대 기관 이상 징후 검토 — 프로토타입 화면. 실데이터 아님 — 팀 생성 합성 자료.
+/* 선대 기관 이상 징후 검토 프로토타입 화면. 실데이터 아님(팀 생성 합성 자료).
    분석 결과는 data.js(파이썬 파이프라인 산출)를 읽기만 한다. 외부 네트워크 호출 없음. */
 (function () {
   'use strict';
@@ -26,10 +26,10 @@
     A: '10/15부터 대표 배기온도에 하루 +0.8°C씩 누적되는 지속 편차를 넣은 가상 선박',
     B: '정상 운전. 10/09부터 부하를 약 12%p 낮췄고(학습 범위 안), 10/03·10/04는 부하 47%(학습 범위 밖)',
     C: '10/23 배기밸브 교체(가상) 이후 배기온도 수준이 달라진 가상 선박',
-    D: '9/20 신규 매입 — 보고가 40일분뿐인 가상 선박',
+    D: '9/20 신규 매입으로 보고가 40일분뿐인 가상 선박',
     E: '보고 양식 오류(10/04 자릿수 오류, 10/11 중복 행, 10/18 파고 누락)와 기준일 24시간 평균값 보고가 있는 가상 선박'
   };
-  var TITLE_SUFFIX = ' — 선대 기관 이상 징후 검토 (실데이터 아님)';
+  var TITLE_SUFFIX = ' · 선대 기관 이상 징후 검토(실데이터 아님)';
   var WARN = '⚠︎'; // ⚠ 텍스트 표시
   var REDUCE = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   var NARROW = window.matchMedia ? window.matchMedia('(max-width: 640px)') : { matches: false };
@@ -68,16 +68,17 @@
     });
   }
   function ok(x) { return x != null && isFinite(x); }
-  function f1(x) { return !ok(x) ? '—' : Number(x).toFixed(1); }
+  var NA = '없음'; // 값이 없을 때
+  function f1(x) { return !ok(x) ? NA : Number(x).toFixed(1); }
   function f2(x) {
-    if (!ok(x)) return '—';
+    if (!ok(x)) return NA;
     var v = Number(x);
     if (Math.abs(v) < 0.005) v = 0;
     return (v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
   }
-  function s1(x) { return !ok(x) ? '—' : (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1); }
-  function fmtC(x) { return !ok(x) ? '—' : f1(x) + '°C'; }
-  function fmtSC(x) { return !ok(x) ? '—' : s1(x) + '°C'; }
+  function s1(x) { return !ok(x) ? NA : (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1); }
+  function fmtC(x) { return !ok(x) ? NA : f1(x) + '°C'; }
+  function fmtSC(x) { return !ok(x) ? NA : s1(x) + '°C'; }
   function md(d) { return d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)) : ''; }
   function mdText(t) {
     return String(t == null ? '' : t).replace(/(\d{4})-(\d{2})-(\d{2})/g, function (_, y, m, d) { return Number(m) + '/' + Number(d); });
@@ -269,6 +270,14 @@
     });
     o.series.forEach(function (s) { g += '<path class="' + s.cls + '" d="' + pathD(s.values, X, Y) + '"/>'; });
     (o.marks || []).forEach(function (mk) { g += '<path class="mk-signal" d="' + tri(X(mk.i), Y(mk.y)) + '"/>'; });
+    (o.points || []).forEach(function (pt, k) {
+      if (pt.i < 0 || !ok(pt.y)) return;
+      var px = X(pt.i), py = Y(pt.y), tw = textW(pt.label);
+      g += '<circle class="pt ' + (pt.cls || 'pt-ok') + '" cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="5.5"/>';
+      var tx = Math.max(m.l, Math.min(m.l + iw - tw, px - tw / 2));
+      var ty = k % 2 === 0 ? Math.min(m.t + ih - 4, py + 20) : Math.max(m.t + 12, py - 12);
+      g += '<text class="pt-lbl" x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '">' + esc(pt.label) + '</text>';
+    });
     // labels: edge labels (refs, series ending at the right edge) are spaced ≥16px
     var edgeX = m.l + iw + 6;
     var labels = defs.map(function (d) {
@@ -334,7 +343,7 @@
   }
   function sparkline(s, dom) {
     var mon = seriesOf(s).filter(function (p) { return p.phase === 'monitor'; }).slice(-30);
-    if (!mon.length) return '<span class="cap">—</span>';
+    if (!mon.length) return '<span class="cap">자료 없음</span>';
     var W = 200, H = 44, x0 = 2, x1 = 160, pad = 4;
     var lo = dom.lo, hi = dom.hi, lim = P.UCL_z, pid = 'sp-' + s.id;
     var st = statusOf(s);
@@ -367,8 +376,104 @@
       g += '<text class="spark-end' + (isSig ? ' sig' : '') + '" x="166" y="' + ty.toFixed(1) + '">' + f2(last.ewma) + '</text>';
     }
     var tail = isSig ? md(st.signal_start) + '부터 한계 초과' : st.run > 0 ? '한계 초과 ' + st.run + '회(신호 전)' : '한계 초과 없음';
-    var title = '최근 30일 EWMA — ' + md(last.d) + ' ' + f2(last.ewma) + ', 관리한계 ' + f2(lim) + ' · ' + tail;
+    var title = '최근 30일 EWMA: ' + md(last.d) + ' ' + f2(last.ewma) + ', 관리한계 ' + f2(lim) + ' · ' + tail;
     return '<div class="chart spark"><svg width="200" height="44" viewBox="0 0 200 44" role="img" aria-label="' + esc(title) + '"><title>' + esc(title) + '</title>' + g + '</svg></div>';
+  }
+
+  // ------------------------------------------------------------ small visualizations
+  var FEAT_IDX = { load_pct: 0, rpm: 1, speed_kn: 2, wave_m: 3 };
+  function svgBox(cls, W, H, title, g) {
+    return '<span class="' + cls + '"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(title) + '"><title>' + esc(title) + '</title>' + g + '</svg>';
+  }
+
+  /* 최근 n일 보고값과 기대값(감시 구간). 한계 초과 구간은 두 선 사이를 칠한다 */
+  function trendSpec(s, n, h, aria) {
+    if (!s.model) return null;
+    var mon = seriesOf(s).filter(function (p) { return p.phase === 'monitor'; }).slice(-n);
+    if (!mon.length) return null;
+    var act = mon.map(function (p) { return p.act; }), exp = mon.map(function (p) { return p.exp == null ? null : p.exp; });
+    var holds = [], ribbons = [], r0 = -1;
+    mon.forEach(function (p, i) {
+      if (p.hold && p.hold !== 'PENDING') holds.push(i);
+      var inRun = !p.hold && (p.exc || p.sig);
+      if (inRun && r0 < 0) r0 = i;
+      if (!inRun && r0 >= 0) { ribbons.push([r0, i - 1]); r0 = -1; }
+    });
+    if (r0 >= 0) ribbons.push([r0, mon.length - 1]);
+    var la = lastIdx(act), le = lastIdx(exp);
+    return {
+      dates: mon.map(function (p) { return p.d; }), h: h || 120, xCount: 5, ticks: 3, unit: '°C',
+      series: [{ label: '보고 ' + f1(act[la]), cls: 's-actual', values: act }, { label: '기대 ' + f1(exp[le]), cls: 's-expected', values: exp }],
+      ribbons: ribbons, ribbonTop: act, ribbonBot: exp, holds: holds, aria: aria || (s.name + ' 최근 보고값과 기대값'),
+      tip: function (i) {
+        var q = mon[i];
+        return '<b>' + md(q.d) + '</b><br>보고 ' + fmtC(q.act) + ' · 기대 ' + fmtC(q.exp) + '<br>잔차 ' + fmtSC(q.res) +
+          (q.hold ? '<br>분석 보류: ' + esc(HOLD[q.hold] || q.hold) : q.sig ? '<br>검토 신호' : q.exc ? '<br>한계 초과' : '');
+      }
+    };
+  }
+  /* 연속 초과 점 띠: ● 한계 초과 · ○ 한계 아래 · ▨ 분석 보류 */
+  function runStrip(s, n, noCap) {
+    var mon = seriesOf(s).filter(function (p) { return p.phase === 'monitor'; }).slice(-(n || 14));
+    if (!mon.length) return '';
+    var R = 4.5, G = 12, W = mon.length * G, H = 12, on = 0, pid = 'rs' + (++seq);
+    var g = '<defs><pattern id="' + pid + '" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)"><rect width="4" height="4" style="fill:var(--hold-bg)"/><line x1="0" y1="0" x2="0" y2="4" style="stroke:var(--hatch-area);stroke-width:2"/></pattern></defs>';
+    mon.forEach(function (p, i) {
+      var cx = i * G + G / 2;
+      if (p.hold && p.hold !== 'PENDING') g += '<rect class="rs-hold" x="' + (cx - R) + '" y="' + (H / 2 - R) + '" width="' + 2 * R + '" height="' + 2 * R + '" rx="1.5" style="fill:url(#' + pid + ')"/>';
+      else if (p.exc) { on++; g += '<circle class="rs-on" cx="' + cx + '" cy="' + H / 2 + '" r="' + R + '"/>'; }
+      else g += '<circle class="rs-off" cx="' + cx + '" cy="' + H / 2 + '" r="' + (R - 0.6) + '"/>';
+    });
+    var t = '최근 ' + mon.length + '회 보고 중 한계 초과 ' + on + '회(● 초과 · ○ 한계 아래 · ▨ 분석 보류)';
+    return svgBox('runstrip', W, H, t, g) + (noCap ? '' : '<span class="rs-cap" aria-hidden="true">최근 ' + mon.length + '회 중 ' + on + '회 초과</span>') + '</span>';
+  }
+  /* 편차 크기 = EWMA ÷ 관리한계, 세로선이 관리한계(1배) */
+  function ratioBar(ratio, max) {
+    if (!ok(ratio)) return '';
+    var W = 120, H = 10, r = Math.max(0, Math.min(ratio, max)), x = r / max * W, lim = W / max;
+    var g = '<rect class="rb-track" x="0" y="0" width="' + W + '" height="' + H + '" rx="3"/>' +
+      '<rect class="rb-in" x="0" y="0" width="' + Math.min(x, lim).toFixed(1) + '" height="' + H + '"/>';
+    if (x > lim) g += '<rect class="rb-over" x="' + lim.toFixed(1) + '" y="0" width="' + (x - lim).toFixed(1) + '" height="' + H + '"/>';
+    g += '<line class="rb-lim" x1="' + lim.toFixed(1) + '" x2="' + lim.toFixed(1) + '" y1="-3" y2="' + (H + 3) + '"/>';
+    return svgBox('ratio', W, H, '관리한계의 ' + f2(ratio) + '배(세로선 = 관리한계 1배)', g) + '</span>';
+  }
+  /* 허용 범위(규칙)·학습 범위(배별 정상 모델) 위 값 위치 */
+  function rangeTrack(f, v, s) {
+    var R = (D.meta.ranges || {})[f];
+    if (!R || !ok(v)) return '';
+    var lo = Math.min(R[0], v), hi = Math.max(R[1], v), W = 96, H = 10;
+    function X(x) { return (x - lo) / ((hi - lo) || 1) * W; }
+    var g = '<rect class="rt-rule" x="' + X(R[0]).toFixed(1) + '" y="2" width="' + (X(R[1]) - X(R[0])).toFixed(1) + '" height="6" rx="3"/>';
+    var li = FEAT_IDX[f], lr = null;
+    if (s.model && li != null) {
+      lr = [s.model.range_lo[li], s.model.range_hi[li]];
+      var a = X(Math.max(lo, lr[0])), b = X(Math.min(hi, lr[1]));
+      g += '<rect class="rt-learn" x="' + a.toFixed(1) + '" y="2" width="' + Math.max(1, b - a).toFixed(1) + '" height="6" rx="3"/>';
+    }
+    var outRule = v < R[0] || v > R[1], outLearn = !!lr && (v < lr[0] || v > lr[1]);
+    g += '<circle class="rt-val' + (outRule ? ' out' : outLearn ? ' lout' : '') + '" cx="' + X(v).toFixed(1) + '" cy="5" r="4.5"/>';
+    var t = '허용 ' + R[0] + '~' + R[1] + (lr ? ' · 학습 범위 ' + f1(lr[0]) + '~' + f1(lr[1]) : '') + ' · 값 ' + v;
+    var cap = outRule ? '<span class="rt-cap warn">' + WARN + ' 허용 범위 밖</span>' : outLearn ? '<span class="rt-cap">학습 범위 밖</span>' : '';
+    return svgBox('rtrack', W, H, t, g) + cap + '</span>';
+  }
+  /* 오늘 보고 처리 현황: 칸 하나 = 선박 하나 */
+  function todayBar(noCap) {
+    var n = { ok: 0, held: 0, wait: 0, block: 0 };
+    var segs = SHIPS.map(function (s) {
+      var a = approvalOf(s), rec = todayRecord(s), cls = '', lab = '승인 대기';
+      if (a === 'approved') { cls = 'ok'; lab = '승인'; n.ok++; }
+      else if (a === 'held') { cls = 'held'; lab = '보류'; n.held++; }
+      else if (rec && !rec.approvable) { cls = 'block'; lab = '승인 불가'; n.block++; }
+      else n.wait++;
+      return '<i class="' + cls + '" title="' + esc(s.name + ': ' + lab) + '">' + esc(s.id) + '</i>';
+    }).join('');
+    var parts = [];
+    if (n.ok) parts.push('승인 ' + n.ok);
+    if (n.held) parts.push('보류 ' + n.held);
+    if (n.wait) parts.push('대기 ' + n.wait);
+    if (n.block) parts.push('불가 ' + n.block);
+    return '<span class="todaybar"' + (noCap ? ' role="img" aria-label="' + esc('오늘 보고 ' + parts.join(' · ')) + '"' : '') + '><span class="tb-seg" aria-hidden="true">' + segs + '</span>' +
+      (noCap ? '' : '<span class="tb-cap">오늘 보고 ' + parts.join(' · ') + '</span>') + '</span>';
   }
 
   // ------------------------------------------------------------ shared pieces
@@ -385,11 +490,11 @@
     return SHIPS.filter(function (s) { return approvalOf(s) === 'pending'; }).length;
   }
   function shipLink(s, st) {
-    return '<a class="rowlink" href="#/review/' + s.id + '" aria-label="' + esc(s.name + ' 근거 상세 — ' + statusText(st) +
+    return '<a class="rowlink" href="#/review/' + s.id + '" aria-label="' + esc(s.name + ' 근거 상세, ' + statusText(st) +
       (st.status === 'hold' ? '' : ', 검토점수 ' + f1(st.score))) + '">' + esc(s.name) + '</a>';
   }
   function holdHead(n, tail) {
-    return '<div class="hb-head"><i class="sw" aria-hidden="true"></i>분석 보류 ' + n + '척 <span>— ' + tail + '</span></div>';
+    return '<div class="hb-head"><i class="sw" aria-hidden="true"></i>분석 보류 ' + n + '척 <span>· ' + tail + '</span></div>';
   }
 
   // ------------------------------------------------------------ screen 1
@@ -400,18 +505,18 @@
       var parts = [];
       if (pc - blocked) parts.push('<b>' + (pc - blocked) + '건 승인 대기</b>');
       if (blocked) parts.push('<b>' + blocked + '건 승인 불가</b>(차단 플래그)');
-      return '<span>오늘(' + md(TODAY) + ') noon report(정오 보고) ' + parts.join(' · ') + ' — 승인 전 보고는 분석에 넣지 않습니다.</span>' +
+      return '<span>오늘(' + md(TODAY) + ') noon report(정오 보고) ' + parts.join(' · ') + '. 승인 전 보고는 분석에 넣지 않습니다.</span>' +
         '<a class="btn sm" href="#/reports">원문 대조·승인 → 화면 3</a>';
     }
     var nOk = SHIPS.filter(function (s) { return approvalOf(s) === 'approved'; }).length;
     var nHeld = SHIPS.filter(function (s) { return approvalOf(s) === 'held'; }).length;
-    return '<span class="ap ap-ok"><span aria-hidden="true">✓</span> 오늘(' + md(TODAY) + ') 보고 처리 완료 — 승인 ' + nOk + ' · 보류 ' + nHeld + '</span>';
+    return '<span class="ap ap-ok"><span aria-hidden="true">✓</span> 오늘(' + md(TODAY) + ') 보고 처리 완료(승인 ' + nOk + ' · 보류 ' + nHeld + ')</span>';
   }
   function heroCard(top, g) {
     var foot = '';
     if (!top) {
       return '<section class="card hero none" aria-label="먼저 볼 배"><div class="hero-id"><p class="eyebrow">먼저 볼 배</p><p class="hero-name">검토 신호 없음</p></div>' +
-        '<div class="hero-metrics"><p class="hero-note"><span class="badge b-hold"><i class="sw" aria-hidden="true"></i>분석 보류 ' + g.held.length + '척</span> — 정상이 아니라 확인이 필요한 상태입니다</p></div>' +
+        '<div class="hero-metrics"><p class="hero-note"><span class="badge b-hold"><i class="sw" aria-hidden="true"></i>분석 보류 ' + g.held.length + '척</span> 정상이 아니라 확인이 필요한 상태입니다.</p></div>' +
         foot + '</section>';
     }
     var s = top.s, st = top.st, p = st.point;
@@ -421,30 +526,32 @@
       '<p class="hero-why">같은 운전 조건의 기대값보다 ' + s1(p.act - p.exp) + '°C 높게, ' + md(st.signal_start) + '부터 ' + st.run + '회 연속 보고</p></div>' +
       '<dl class="hero-metrics">' +
         '<div><dt>대표 배기온도 잔차</dt><dd class="num">' + s1(p.act - p.exp) + '<small>°C</small></dd><dd class="cap">기대 ' + f1(p.exp) + ' / 보고 ' + fmtC(p.act) + '</dd></div>' +
-        '<div><dt>지속</dt><dd class="num">' + st.run + '<small>회 연속</small></dd><dd class="cap">' + md(st.signal_start) + '부터 한계 초과</dd></div>' +
+        '<div><dt>지속</dt><dd class="num">' + st.run + '<small>회 연속</small></dd><dd class="cap">' + md(st.signal_start) + '부터 한계 초과</dd><dd>' + runStrip(s, 14) + '</dd></div>' +
         '<div><dt>검토점수</dt><dd class="num">' + f1(st.score) + '</dd><dd class="cap">시연용 · 고장확률 아님</dd></div>' +
       '</dl>' +
-      '<a class="btn primary go" href="#/review/' + s.id + '">왜 이 배인가 — 근거 보기 →</a>' + foot + '</section>';
+      '<a class="btn primary go" href="#/review/' + s.id + '">왜 이 배인가? 근거 보기 →</a>' +
+      '<div class="hero-viz"><p class="viz-cap">최근 30일 대표 배기온도: 보고값과 기대값<span class="cap">기대값 = 같은 운전 조건에서 이 배의 평소(배별 정상 모델) · 칠한 구간 = 관리한계 초과</span></p>' +
+      chartSlot(trendSpec(s, 30, 130)) + '</div>' + foot + '</section>';
   }
   function viewFleet() {
     var g = sortedShips();
     var top = g.analyzed.filter(function (r) { return r.st.status === 'signal'; })[0];
     var dom = sparkDomain(g.analyzed);
     var h = '<h1 tabindex="-1">화면 1. 선대 이상 징후 대시보드</h1>' +
-      '<p class="lead">선박별 대표 배기온도의 기대값과 실제값, 잔차 추세, 지속 편차 여부 — 공무감독이 우선 확인할 선박과 그 이유를 파악합니다.</p>';
-    h += heroCard(top, g) + '<p class="fleet-today">' + todayLine() + '</p>';
+      '<p class="lead">선박별 대표 배기온도의 기대값과 실제값, 잔차 추세, 지속 편차 여부를 표시합니다. 공무감독이 우선 확인할 선박과 그 이유를 파악합니다.</p>';
+    h += heroCard(top, g) + '<div class="fleet-today">' + todayBar(true) + todayLine() + '</div>';
 
     h += '<h2>분석 중 선박<span class="h-cap">검토점수 순</span></h2><div class="table-wrap"><table class="fleet">' +
       '<colgroup><col class="c-ship"><col><col><col><col><col><col><col><col class="c-chev"></colgroup>' +
       '<thead><tr><th>선박</th><th>상태</th><th class="r">검토점수<span class="th-cap">시연용 · 고장확률 아님</span></th><th class="r">잔차(°C)</th>' +
-      '<th>지속 편차</th><th>잔차 추세(EWMA, 최근 30일)</th><th class="r">기대값 / 보고값(°C)</th><th>오늘 보고</th><th class="chev"><span class="sr-only">이동</span></th></tr></thead><tbody>';
+      '<th>지속 편차<span class="th-cap">최근 14회 · ● 초과 ○ 아래 ▨ 보류</span></th><th>잔차 추세(EWMA, 최근 30일)</th><th class="r">기대값 / 보고값(°C)</th><th>오늘 보고</th><th class="chev"><span class="sr-only">이동</span></th></tr></thead><tbody>';
     g.analyzed.forEach(function (r) {
       var p = r.st.point || {};
       h += '<tr class="click" data-href="#/review/' + r.s.id + '"><td>' + shipLink(r.s, r.st) + '<span class="cap meta">' + esc(r.s.type) + ' · ' + r.s.age_years + '년</span></td>' +
         '<td>' + badge(r.st) + '</td>' +
         '<td class="r"><span class="score' + (r.st.score ? '' : ' zero') + '">' + f1(r.st.score) + '</span></td>' +
         '<td class="r">' + s1(p.act - p.exp) + '</td>' +
-        '<td>' + persistCell(r.st) + '</td>' +
+        '<td>' + persistCell(r.st) + runStrip(r.s, 14, true) + '</td>' +
         '<td>' + sparkline(r.s, dom) + '</td>' +
         '<td class="r">' + f1(p.exp) + ' / ' + f1(p.act) + '<span class="cap">' + md(p.d) + ' 기준</span></td>' +
         '<td>' + approvalBadge(r.s, true) + '</td><td class="chev" aria-hidden="true">›</td></tr>';
@@ -465,7 +572,7 @@
     });
     h += '</tbody></table></div></section>';
     h += '<details class="explain"><summary>이 시연의 합성 선박 5척(팀이 만든 가상 상황)</summary><ul>' +
-      SHIPS.map(function (s) { return '<li><b>' + esc(s.name) + '</b> — ' + esc(ROLE_TEXT[s.id] || s.role) + '</li>'; }).join('') + '</ul></details>';
+      SHIPS.map(function (s) { return '<li><b>' + esc(s.name) + '</b>: ' + esc(ROLE_TEXT[s.id] || s.role) + '</li>'; }).join('') + '</ul></details>';
     return h;
   }
 
@@ -473,19 +580,20 @@
   function viewReview() {
     var g = sortedShips();
     var h = '<h1 tabindex="-1">화면 2. 점검 순서 화면</h1>' +
-      '<p class="lead">선박별 검토점수, 편차 추세와 근거 지표, 분석 보류 상태 — 공무감독이 검토점수와 근거를 대조해 우선 확인할 선박을 선택합니다.</p>' +
+      '<p class="lead">선박별 검토점수, 편차 추세와 근거 지표, 분석 보류 상태를 표시합니다. 공무감독이 검토점수와 근거를 대조해 우선 확인할 선박을 선택합니다.</p>' +
       '<p class="sub"><span class="scope">검토점수(시연용) 정렬입니다. 가용 시간·조치 효과를 반영한 점검 순서 최적화는 PoC 단계(2.5) 범위입니다.</span></p>' +
       '<div class="table-wrap"><table class="review"><colgroup><col class="c-rank"><col class="c-ship"><col><col><col><col><col><col class="c-chev"></colgroup>' +
       '<thead><tr><th class="r">순</th><th>선박</th><th>상태</th><th class="r">검토점수<span class="th-cap">시연용 · 고장확률 아님</span></th>' +
-      '<th class="r">편차 크기</th><th>지속 정도</th><th>근거 지표</th><th class="chev"><span class="sr-only">이동</span></th></tr></thead><tbody>';
+      '<th>편차 크기<span class="th-cap">관리한계 대비, 세로선 = 1배</span></th><th>지속 정도<span class="th-cap">최근 14회 · ● 초과 ○ 아래 ▨ 보류</span></th><th>근거 지표</th><th class="chev"><span class="sr-only">이동</span></th></tr></thead><tbody>';
+    var rmax = Math.max.apply(null, [2.5].concat(g.analyzed.map(function (r) { var q = r.st.point || {}; return ok(q.ewma) ? q.ewma / P.UCL_z : 0; })));
     g.analyzed.forEach(function (r, i) {
       var p = r.st.point || {};
       var l30 = load30(r.s);
       h += '<tr class="click" data-href="#/review/' + r.s.id + '"><td class="r">' + (i + 1) + '</td><td>' + shipLink(r.s, r.st) + '</td>' +
         '<td>' + badge(r.st) + '</td>' +
         '<td class="r"><span class="score' + (r.st.score ? '' : ' zero') + '">' + f1(r.st.score) + '</span></td>' +
-        '<td class="r"><b>' + f2(p.ewma / P.UCL_z) + '배</b><span class="cap">EWMA ' + f2(p.ewma) + ' ÷ 한계 ' + f2(P.UCL_z) + '</span></td>' +
-        '<td>' + (r.st.run > 0 ? '연속 초과 ' + r.st.run + '회' : '초과 없음') + (r.st.signal_start ? '<span class="cap">' + md(r.st.signal_start) + '부터</span>' : '') + '</td>' +
+        '<td><span class="row nowrap">' + ratioBar(p.ewma / P.UCL_z, rmax) + '<b>' + f2(p.ewma / P.UCL_z) + '배</b></span><span class="cap">EWMA ' + f2(p.ewma) + ' ÷ 한계 ' + f2(P.UCL_z) + '</span></td>' +
+        '<td>' + (r.st.run > 0 ? '연속 초과 ' + r.st.run + '회' : '초과 없음') + (r.st.signal_start ? '<span class="cap">' + md(r.st.signal_start) + '부터</span>' : '') + runStrip(r.s, 14, true) + '</td>' +
         '<td>대표 배기온도 잔차 <b>' + fmtSC(p.act - p.exp) + '</b><span class="cap">기대 ' + f1(p.exp) + ' / 보고 ' + f1(p.act) + ' · 부하 ' + f1(p.load) + '%(30일 평균 ' + f1(l30) + '%)</span></td>' +
         '<td class="chev" aria-hidden="true">›</td></tr>';
     });
@@ -515,23 +623,35 @@
         sigLine = s.name + '는 관리도 한계를 넘은 ' + exc.length + '회 가운데 고정 임계값을 넘은 날이 ' + excOver + '일';
       }
     });
-    return '<p class="compare"><b>고정 임계값과의 차이(같은 합성 자료)</b> — 예시 고정 임계값 ' + th + '°C로 판정했다면 ' +
+    return '<p class="compare"><b>고정 임계값과의 차이(같은 합성 자료)</b><br>예시 고정 임계값 ' + th + '°C로 판정했다면 ' +
       (sigLine ? sigLine + '이고, ' : '') + '신호 없는 날 가운데 임계값을 넘는 날이 ' + (parts.length ? parts.join(' · ') : '없음') +
       '입니다. 배·부하·기상마다 “평소”가 달라서, 배별 정상 모델의 잔차로 보면 판정이 달라집니다(예시선은 비교용이며 분석에 쓰지 않음).</p>';
   }
-  function closestCompare(s, st) {
-    // "같은 배기온도, 다른 판정": 과거 신호 없던 날 중 오늘 보고값과 가장 가까운 날
-    if (!st.point || st.status !== 'signal') return '';
+  function compareCandidate(s, st) {
+    // "같은 배기온도, 다른 판정": 같은 감시 구간에서 신호 없던 날 중 보고값이 가장 가까운 날
+    if (!st.point || st.status !== 'signal') return null;
     var act = st.point.act, resNow = st.point.act - st.point.exp, best = null;
     s.series.forEach(function (p) {
       if (p.phase !== 'monitor' || p.res == null || p.hold || p.sig || p.exc || p.ewma == null) return;
       if (Math.abs(p.res) > Math.abs(resNow) / 2) return;
       if (!best || Math.abs(p.act - act) < Math.abs(best.act - act)) best = p;
     });
-    if (!best || Math.abs(best.act - act) > 5) return '';
-    return '<p class="compare"><b>같은 배기온도, 다른 판정</b> — ' + md(best.d) + ' 보고 ' + fmtC(best.act) + '는 같은 감시 구간에서 그날 운전 조건(부하 ' + f1(best.load) + '%)의 기대값과 ' +
+    if (!best || Math.abs(best.act - act) > 5) return null;
+    return best;
+  }
+  function comparePoints(s, st, dates) {
+    var best = compareCandidate(s, st);
+    if (!best) return [];
+    return [{ i: dates.indexOf(best.d), y: best.act, label: md(best.d) + ' ' + f1(best.act) + '°C · 신호 없음', cls: 'pt-ok' },
+            { i: dates.indexOf(st.point.d), y: st.point.act, label: md(st.point.d) + ' ' + f1(st.point.act) + '°C · 한계 초과', cls: 'pt-sig' }];
+  }
+  function closestCompare(s, st) {
+    var best = compareCandidate(s, st);
+    if (!best) return '';
+    var act = st.point.act;
+    return '<p class="compare"><b>같은 배기온도, 다른 판정</b><br>' + md(best.d) + ' 보고 ' + fmtC(best.act) + '는 같은 감시 구간에서 그날 운전 조건(부하 ' + f1(best.load) + '%)의 기대값과 ' +
       fmtSC(best.res) + ' 차이로 관리도가 한계 아래였고, ' + md(st.point.d) + ' 보고 ' + fmtC(act) + '는 기대값보다 ' + fmtSC(act - st.point.exp) + ' 높아 한계를 넘었습니다. ' +
-      '고정 임계값 예시(' + P.fixed_threshold_example_c + '°C)로는 두 날 모두 정상으로 보입니다.</p>';
+      '고정 임계값 예시(' + P.fixed_threshold_example_c + '°C)로는 두 날 모두 정상으로 보입니다. 아래 차트에 두 날짜를 점으로 표시했습니다.</p>';
   }
 
   function viewDetail(id) {
@@ -542,7 +662,7 @@
     var dates = ser.map(function (p) { return p.d; });
     var hasQ = !!s.questions[variantOf(s)];
     var h = '<header class="page-head"><div><p class="eyebrow"><a class="back" href="#/review">‹ 화면 2. 점검 순서</a></p>' +
-      '<h1 tabindex="-1">' + esc(s.name) + ' — 근거 상세</h1>' +
+      '<h1 tabindex="-1">' + esc(s.name) + ' 근거 상세</h1>' +
       '<p class="meta"><span>' + esc(s.type) + ' · 선령 ' + s.age_years + '년 · 주기관 ' + esc(s.engine_id) + ' · ' + (s.form === 'K' ? 'K형(국문 메일 본문)' : 'E형(영문 엑셀)') + '</span> ' + badge(st) + ' ' + approvalBadge(s) + '</p></div>' +
       '<div class="page-actions row">' + (hasQ
         ? '<a class="btn" href="#/reports/' + s.id + '">오늘 원문 → 화면 3</a><a class="btn primary" href="#/requests/' + s.id + '">기관장 확인 질문 초안 보기 → 화면 4</a>'
@@ -559,9 +679,9 @@
       h += '<div class="facts">' +
         (st.status === 'hold'
           ? '<div class="fact key"><div class="k">판정</div><div class="v"><i class="sw" aria-hidden="true"></i> 판정 중지</div><div class="s">분석 보류 · ' + holdText(st) + (st.hold_reason === 'POST_MAINTENANCE' && last ? ' · ' + md(last.date) + '부터' : '') + '</div></div>'
-          : '<div class="fact key"><div class="k">며칠째</div><div class="v">' + (st.run > 0 ? st.run + '회 연속' : '초과 없음') + '</div><div class="s">' + (st.signal_start ? md(st.signal_start) + '부터 한계 초과' : '두 보고 연속 초과 시 검토 신호') + '</div></div>') +
+          : '<div class="fact key"><div class="k">며칠째</div><div class="v">' + (st.run > 0 ? st.run + '회 연속' : '초과 없음') + '</div><div class="s">' + (st.signal_start ? md(st.signal_start) + '부터 한계 초과' : '두 보고 연속 초과 시 검토 신호') + '</div>' + runStrip(s, 14) + '</div>') +
         '<div class="fact key"><div class="k">' + (st.status === 'hold' ? '보류 전 마지막 판정 잔차' : '대표 배기온도 잔차') + '</div><div class="v">' + fmtSC(p.act - p.exp) + '</div><div class="s">기대 ' + f1(p.exp) + ' / 보고 ' + fmtC(p.act) + ' · ' + md(p.d) + ' 보고</div></div>' +
-        '<div class="fact"><div class="k">검토점수</div><div class="v">' + (st.score == null ? '—' : f1(st.score)) + '</div><div class="s">편차 크기 × 지속 정도 · 시연용 · 고장확률 아님</div></div>' +
+        '<div class="fact"><div class="k">검토점수</div><div class="v">' + (st.score == null ? '산출 안 함' : f1(st.score)) + '</div><div class="s">편차 크기 × 지속 정도 · 시연용 · 고장확률 아님</div></div>' +
         '<div class="fact"><div class="k">EWMA / 관리한계</div><div class="v">' + f2(p.ewma) + ' / ' + f2(P.UCL_z) + '</div><div class="s">λ=' + P.lambda + ', L=' + P.L + ', 표준화 잔차 단위</div></div>' +
         '<div class="fact"><div class="k">최근 정비</div><div class="v">' + (last ? md(last.date) + ' ' + esc(last.item) : '기록 없음') + '</div><div class="s">' + (last ? (last.baseline_affected ? '기준 영향 의심 → 분석 보류' : '기준 영향 없음으로 기록') : '') + '</div></div>' +
         '</div>';
@@ -581,7 +701,7 @@
       if (run0 >= 0) ribbons.push([run0, ser.length - 1]);
       var actV = ser.map(function (q) { return q.act; }), expV = ser.map(function (q) { return q.exp == null ? null : q.exp; });
       var la = lastIdx(actV), le = lastIdx(expV);
-      h += '<h2>대표 배기온도 — 보고값과 배별 정상 모델의 기대값</h2>' +
+      h += '<h2>대표 배기온도의 보고값과 배별 정상 모델의 기대값</h2>' +
         '<div class="legend"><span><i></i>보고값</span><span><i class="exp"></i>기대값(부하·회전수·속력·파고 → Ridge)</span><span><i class="btrain"></i>학습 80일</span><span><i class="bcalib"></i>잔차 보정 30일</span>' +
         '<span><i class="bmon"></i>감시 30일</span>' + (ribbons.length ? '<span><i class="zone"></i>잔차(한계 초과 구간)</span>' : '') +
         '<span><i class="sw" aria-hidden="true"></i>분석 보류일</span><span><i class="fixed"></i>고정 임계값 예시(비교용, 분석에 안 씀)</span></div>' +
@@ -592,7 +712,7 @@
           bands: [{ from: trainIdx, to: trainEnd, cls: 'band-train', label: '학습 80일' }, { from: calIdx, to: calEnd, cls: 'band-calib', label: '보정 30일' },
                   { from: monIdx, to: ser.length - 1, cls: 'band-mon', label: '감시 30일' }],
           refs: [{ y: P.fixed_threshold_example_c, label: '예시 ' + P.fixed_threshold_example_c + '°C', cls: 'ref-fixed' }],
-          ribbons: ribbons, ribbonTop: actV, ribbonBot: expV,
+          ribbons: ribbons, ribbonTop: actV, ribbonBot: expV, points: comparePoints(s, st, dates),
           holds: holds, aria: s.name + ' 대표 배기온도 보고값과 기대값',
           tip: function (i) {
             var q = ser[i];
@@ -608,13 +728,13 @@
       var ewV = mon.map(function (q) { return q.ewma; });
       var lw = lastIdx(ewV);
       var eps = (s.episodes || {})[variantOf(s)] || [];
-      h += '<h2>표준화 잔차의 EWMA(λ=' + P.lambda + ')와 관리한계 — 감시 구간</h2>' +
+      h += '<h2>감시 구간의 표준화 잔차 EWMA(λ=' + P.lambda + ')와 관리한계</h2>' +
         '<p class="sub">이 감시 구간의 검토 신호 에피소드: ' + (eps.length ? eps.map(function (e, i) {
           var ongoing = i === eps.length - 1 && st.status === 'signal';
-          return md(e.start) + '–' + md(e.end) + (ongoing ? '(진행 중)' : '(이후 한계 아래로 복귀)');
+          return md(e.start) + '~' + md(e.end) + (ongoing ? '(진행 중)' : '(이후 한계 아래로 복귀)');
         }).join(', ') : '없음') + ' · 합성 정상 운전에도 기본 오경보가 있을 수 있어 신호는 확인 요청의 계기일 뿐입니다.</p>' +
-        '<div class="legend"><span><i></i>EWMA</span><span><i class="ref"></i>관리한계 ' + f2(P.UCL_z) + ' = L·√(λ/(2−λ)), L=' + P.L + ' — 표준화 잔차 단위(μ·σ는 보정 30일 합성 정상자료 잔차)</span>' +
-        '<span><span class="tri" aria-hidden="true">▲</span>검토 신호(두 보고 연속 초과)</span><span><i class="sw" aria-hidden="true"></i>보류일 — EWMA 건너뜀, 보간 없음</span></div>' +
+        '<div class="legend"><span><i></i>EWMA</span><span><i class="ref"></i>관리한계 ' + f2(P.UCL_z) + ' = L·√(λ/(2−λ)), L=' + P.L + ', 표준화 잔차 단위(μ·σ는 보정 30일 합성 정상자료 잔차)</span>' +
+        '<span><span class="tri" aria-hidden="true">▲</span>검토 신호(두 보고 연속 초과)</span><span><i class="sw" aria-hidden="true"></i>보류일(EWMA 건너뜀, 보간 없음)</span></div>' +
         '<div class="card chart-card">' + chartSlot({
           dates: mDates, h: 200, xCount: 8, unit: '표준화 잔차',
           series: [{ label: lw >= 0 ? 'EWMA ' + f2(ewV[lw]) : 'EWMA', cls: 's-ewma', values: ewV }],
@@ -628,7 +748,7 @@
           }
         }) + '</div>';
     } else {
-      h += '<div class="facts"><div class="fact key"><div class="k">배별 정상 모델</div><div class="v">없음</div><div class="s">유효 보고 ' + s.n_valid_baseline + '일 — 학습 ' + P.train_days + ' + 보정 ' + P.calib_days + '일 필요</div></div></div>';
+      h += '<div class="facts"><div class="fact key"><div class="k">배별 정상 모델</div><div class="v">없음</div><div class="s">유효 보고 ' + s.n_valid_baseline + '일(학습 ' + P.train_days + '일 + 보정 ' + P.calib_days + '일 필요)</div></div></div>';
       var av = ser.map(function (q) { return q.act; }), lav = lastIdx(av);
       h += '<h2>대표 배기온도 보고값(기대값 없음)</h2><div class="card chart-card">' + chartSlot({
         dates: dates, h: 220, unit: '°C',
@@ -640,7 +760,7 @@
     var recent = ser.slice(-60);
     var rd = recent.map(function (q) { return q.d; });
     var conds = [['load', '운전 부하(%)', 0], ['rpm', '회전수(rpm)', 1], ['speed', '속력(kn)', 2], ['wave', '파고(m)', 3]];
-    h += '<h2>운전 조건 변화 — 최근 60일</h2><div class="legend"><span><i></i>보고값</span>' + (s.model ? '<span><i class="fixed"></i>학습 범위(±5%) 경계 — 밖이면 학습 범위 이탈 보류</span>' : '') + '</div><div class="grid4">';
+    h += '<h2>최근 60일 운전 조건 변화</h2><div class="legend"><span><i></i>보고값</span>' + (s.model ? '<span><i class="fixed"></i>학습 범위(±5%) 경계(밖이면 학습 범위 이탈 보류)</span>' : '') + '</div><div class="grid4">';
     conds.forEach(function (c) {
       h += '<div class="card"><h3>' + c[1] + '</h3>' + chartSlot({
         dates: rd, h: 120, xCount: 4, ticks: 3, direct: false, padFrac: 0.10,
@@ -664,7 +784,7 @@
       '<div class="card"><h3>원문 보고와 대조</h3><p class="sub">분석 결과가 단순 입력 오류나 정비 후 기준 변화 때문인지 원문으로 확인합니다.</p><div class="row">' +
       '<a class="btn sm" href="#/reports/' + s.id + '">오늘(' + md(TODAY) + ') 원문</a>' +
       Object.keys(s.reports).sort().reverse().filter(function (d) { return d !== TODAY; }).slice(0, 5).map(function (d) { return '<a class="btn sm" href="#/reports/' + s.id + '/' + d + '">' + md(d) + '</a>'; }).join('') +
-      '</div>' + (s.model ? '<p class="sub" style="margin-top:var(--sp-3)">배별 정상 모델: Ridge(α=' + P.ridge_alpha + ', 특징 4개 표준화) · 학습 ' + md(s.model.train[0]) + '–' + md(s.model.train[1]) + '(80일) · 잔차 보정 ' + md(s.model.calib[0]) + '–' + md(s.model.calib[1]) + '(30일, 잔차 σ ' + f2(s.model.sigma) + '°C). 시연 조건이며 실제 선박에 충분한 학습 기간이라는 뜻은 아닙니다.</p>' : '') +
+      '</div>' + (s.model ? '<p class="sub" style="margin-top:var(--sp-3)">배별 정상 모델: Ridge(α=' + P.ridge_alpha + ', 특징 4개 표준화) · 학습 ' + md(s.model.train[0]) + '~' + md(s.model.train[1]) + '(80일) · 잔차 보정 ' + md(s.model.calib[0]) + '~' + md(s.model.calib[1]) + '(30일, 잔차 σ ' + f2(s.model.sigma) + '°C). 시연 조건이며 실제 선박에 충분한 학습 기간이라는 뜻은 아닙니다.</p>' : '') +
       '</div></div>';
     if (hasQ) h += '<p style="margin-top:var(--sp-5)"><a class="btn" href="#/requests/' + s.id + '">기관장 확인 질문 초안 보기 → 화면 4</a></p>';
     return h;
@@ -703,7 +823,7 @@
     if (a.decision === 'held') {
       var hv = s.today.variants.held;
       return '<div class="result held" tabindex="-1"><i class="sw" aria-hidden="true"></i><span>보류함 ' + at + ' · ' + esc(a.reason) +
-        ' — 화면 1·2에 분석 보류(' + esc(HOLD[hv.hold_reason] || hv.hold_reason) + ')로 표시</span></div>';
+        '. 화면 1·2에 분석 보류(' + esc(HOLD[hv.hold_reason] || hv.hold_reason) + ')로 표시</span></div>';
     }
     var pv = s.today.variants.pending, av = s.today.variants.approved || pv, parts = [];
     if (pv.status === 'signal' && av.status === 'signal') {
@@ -715,12 +835,12 @@
     var pd = pv.point && pv.point.d, ad = av.point && av.point.d;
     if (pd && ad && pd !== ad) parts.push('기준 보고 ' + md(pd) + ' → ' + md(ad));
     else if (!ad && av.hold_detail && pv.hold_detail !== av.hold_detail) parts.push(mdText(av.hold_detail));
-    return '<div class="result" tabindex="-1"><span aria-hidden="true">✓</span> 승인 ' + at + ' — 분석 반영: ' + esc(parts.join(' · ')) + '</div>';
+    return '<div class="result" tabindex="-1"><span aria-hidden="true">✓</span> 승인 ' + at + ', 분석 반영: ' + esc(parts.join(' · ')) + '</div>';
   }
   function holdGroup(s, primary) {
-    return '<div class="hold-grp"><label class="field-label" for="holdReason">보류 사유 <span class="cap">선택 — 비우면 \'공무감독 보류\'</span></label>' +
+    return '<div class="hold-grp"><label class="field-label" for="holdReason">보류 사유 <span class="cap">선택, 비우면 \'공무감독 보류\'</span></label>' +
       '<div class="row nowrap"><input type="text" id="holdReason" placeholder="예: 기관장에게 재확인 필요">' +
-      '<button class="btn' + (primary ? ' primary' : '') + '" data-act="hold" data-id="' + s.id + '">' + (primary ? '보류 — 분석 보류로 표시' : '보류') + '</button></div></div>';
+      '<button class="btn' + (primary ? ' primary' : '') + '" data-act="hold" data-id="' + s.id + '">' + (primary ? '보류(분석 보류로 표시)' : '보류') + '</button></div></div>';
   }
   function viewReports(id, date) {
     var s = BY_ID[id] || SHIPS.filter(function (x) { return approvalOf(x) === 'pending'; })[0] || SHIPS[0];
@@ -728,8 +848,8 @@
     var rec = s.reports[date];
     var isPast = date !== TODAY;
     var h = '<h1 tabindex="-1">화면 3. 보고 표준화·확인 화면</h1>' +
-      '<p class="lead">noon report의 항목·값·단위를 표준 형식으로 정리하고 원문, 누락 항목, 확인 필요 사항을 표시합니다 — 공무감독이 분석에 사용할 입력값을 원문과 대조하고 승인합니다.</p>' +
-      '<div class="s3"><div class="s3side"><p class="rlist-head">오늘(' + md(TODAY) + ') 보고</p><nav class="rlist today" aria-label="오늘 보고">';
+      '<p class="lead">noon report의 항목·값·단위를 표준 형식으로 정리하고 원문, 누락 항목, 확인 필요 사항을 표시합니다. 공무감독이 분석에 사용할 입력값을 원문과 대조하고 승인합니다.</p>' +
+      '<div class="s3"><div class="s3side"><p class="rlist-head">오늘(' + md(TODAY) + ') 보고</p>' + todayBar() + '<nav class="rlist today" aria-label="오늘 보고">';
     SHIPS.forEach(function (x) {
       var cur = x.id === s.id && !isPast;
       h += '<a href="#/reports/' + x.id + '"' + (cur ? ' aria-current="true"' : '') + '><span class="rl-main"><span class="t">' + esc(x.name) + '</span><span class="cap">' + (x.form === 'K' ? 'K형 메일' : 'E형 엑셀') + '</span></span>' + approvalBadge(x) + '</a>';
@@ -759,10 +879,10 @@
       if (loc && f.blocking) flaggedLocs[locKey(loc)] = true;
     });
     h += '<div class="s3main">';
-    if (isPast) h += '<div class="pastbar"><span>지난 보고 보기 — ' + esc(s.name) + ' ' + md(date) + '(접수 시점에 처리됨)</span><a class="btn sm" href="#/reports/' + s.id + '">오늘 보고로 →</a></div>';
-    h += '<div><h3 style="margin-top:0">원문 — ' + esc(rec.source_file) + '</h3>' + rawView(rec, flaggedLocs) +
+    if (isPast) h += '<div class="pastbar"><span>지난 보고 보기: ' + esc(s.name) + ' ' + md(date) + '(접수 시점에 처리됨)</span><a class="btn sm" href="#/reports/' + s.id + '">오늘 보고로 →</a></div>';
+    h += '<div><h3 style="margin-top:0">원문: ' + esc(rec.source_file) + '</h3>' + rawView(rec, flaggedLocs) +
       '<p class="sub">원문은 바꾸지 않고 그대로 보존합니다. 표의 행을 누르면 원문 위치가 강조됩니다.</p></div>';
-    h += '<div><h3 style="margin-top:0">표준 표 — ' + esc(s.name) + ' ' + md(rec.report_date) + '</h3><div class="table-wrap"><table class="std"><thead><tr><th>항목</th><th class="r">값</th><th>단위</th><th>원문 표기</th><th>위치</th><th>확인</th></tr></thead><tbody>';
+    h += '<div><h3 style="margin-top:0">표준 표: ' + esc(s.name) + ' ' + md(rec.report_date) + '</h3><div class="table-wrap"><table class="std"><thead><tr><th>항목</th><th class="r">값</th><th>단위</th><th>범위<span class="th-cap">허용 범위 · 학습 범위 위 값</span></th><th>원문 표기</th><th>위치</th><th>확인</th></tr></thead><tbody>';
     function checkCell(ff) {
       if (!ff.length) return '<span class="info">이상 없음</span>';
       return ff.map(function (x) { return x.blocking ? '<b class="blk">' + WARN + ' 차단 · ' + esc(x.message) + '</b>' : '<span class="info">' + esc(x.message) + '</span>'; }).join('<br>');
@@ -772,15 +892,17 @@
       var ff = fieldFlags[f] || [];
       var bad = ff.some(function (x) { return x.blocking; });
       if (!fd) {
-        h += '<tr class="flagged"><td>' + FIELD_NAME[f] + '</td><td colspan="4" class="muted">원문에 없음</td><td>' + (ff.length ? checkCell(ff) : '') + '</td></tr>';
+        h += '<tr class="flagged"><td>' + FIELD_NAME[f] + '</td><td colspan="5" class="muted">원문에 없음</td><td>' + (ff.length ? checkCell(ff) : '') + '</td></tr>';
         return;
       }
-      var val = f === 'remarks' ? esc(fd.value) : (fd.value == null ? '—' : esc(fd.value));
-      h += '<tr class="click' + (bad ? ' flagged' : '') + '" data-loc="' + locKey(fd.loc) + '"><td>' + FIELD_NAME[f] + '</td><td class="r">' + val + '</td><td>' + esc(fd.unit || '') + '</td>' +
+      var val = f === 'remarks' ? esc(fd.value) : (fd.value == null ? '빈 칸' : esc(fd.value));
+      h += '<tr class="click' + (bad ? ' flagged' : '') + '" data-loc="' + locKey(fd.loc) + '"><td>' + FIELD_NAME[f] + '</td><td class="r">' + val + '</td><td>' + esc(fd.unit || '') + '</td><td>' + (f === 'remarks' ? '' : rangeTrack(f, fd.value, s)) + '</td>' +
         '<td>' + esc(fd.raw_label) + (f === 'remarks' ? '' : ': ' + esc(fd.raw_value == null ? '(빈 칸)' : fd.raw_value) + (fd.raw_unit ? ' ' + esc(fd.raw_unit) : '')) + '</td>' +
         '<td class="loc">' + esc(fd.loc.line != null ? fd.loc.line + '행' : fd.loc.cell) + '</td><td>' + checkCell(ff) + '</td></tr>';
     });
-    h += '</tbody></table></div>';
+    h += '</tbody></table></div>' +
+      '<div class="legend"><span><i class="rtl-rule"></i>허용 범위(규칙)</span>' + (s.model ? '<span><i class="rtl-learn"></i>학습 범위(배별 정상 모델, ±5%)</span>' : '') +
+      '<span><i class="rtl-dot"></i>값</span><span><i class="rtl-dot out"></i>허용 범위 밖</span>' + (s.model ? '<span><i class="rtl-dot lout"></i>학습 범위 밖</span>' : '') + '</div>';
     var others = rec.flags.filter(function (f) { return !f.field; });
     if (others.length) h += '<ul class="flags">' + others.map(function (f) { return '<li class="' + (f.blocking ? 'block' : '') + '">' + (f.blocking ? WARN + ' ' : '') + flagName(f.code) + esc(f.message) + '</li>'; }).join('') + '</ul>';
     var blocking = rec.flags.filter(function (f) { return f.blocking; });
@@ -788,12 +910,12 @@
       var a = state.approvals[s.id];
       h += '<div class="decide">';
       if (!a) {
-        h += '<p class="decide-head"><b>오늘(' + md(TODAY) + ') 보고 — ' + esc(s.name) + '</b>' + approvalBadge(s) + '</p>';
+        h += '<p class="decide-head"><b>오늘(' + md(TODAY) + ') 보고: ' + esc(s.name) + '</b>' + approvalBadge(s) + '</p>';
         if (rec.approvable) {
-          h += '<div class="decide-row"><button class="btn primary" data-act="approve" data-id="' + s.id + '">승인 — 분석에 넣기</button>' + holdGroup(s, false) + '</div>' +
+          h += '<div class="decide-row"><button class="btn primary" data-act="approve" data-id="' + s.id + '">승인(분석에 넣기)</button>' + holdGroup(s, false) + '</div>' +
             '<p class="sub">승인된 보고만 분석에 들어갑니다. 보류하면 이 선박은 \'분석 보류(입력 누락)\'로 표시됩니다.</p>';
         } else {
-          h += '<div class="decide-row"><button class="btn" data-act="approve" data-id="' + s.id + '" disabled aria-describedby="whyBlocked">승인 — 분석에 넣기</button>' + holdGroup(s, true) + '</div>' +
+          h += '<div class="decide-row"><button class="btn" data-act="approve" data-id="' + s.id + '" disabled aria-describedby="whyBlocked">승인(분석에 넣기)</button>' + holdGroup(s, true) + '</div>' +
             '<p class="field-error" id="whyBlocked">' + WARN + ' 차단 플래그(' + esc(blocking.map(function (f) { return f.code; }).join(', ')) + ')가 있어 승인할 수 없습니다. 이 보고는 분석에 넣지 않고 선박을 \'분석 보류\'로 표시합니다.</p>';
         }
       } else {
@@ -806,7 +928,7 @@
       h += '</div>';
     } else {
       h += '<p class="sub">지난 보고입니다(시연에서는 접수 시점에 처리된 것으로 둡니다). ' +
-        (rec.status === 'ok' ? '분석에 사용됨.' : '차단 플래그로 이 날은 분석 보류 — EWMA를 건너뜁니다(보간 없음).') + '</p>';
+        (rec.status === 'ok' ? '분석에 사용됨.' : '차단 플래그로 이 날은 분석 보류이며 EWMA를 건너뜁니다(보간 없음).') + '</p>';
     }
     h += '<p class="sub">알려진 합성 양식 2종(K형·E형)만 규칙(양식 사전·단위 변환·범위 검사)으로 처리합니다. 양식이 일정하지 않은 보고의 언어모델 추출은 PoC 단계(2.5) 범위입니다.</p>';
     h += '</div></div></div>';
@@ -847,8 +969,9 @@
     if (q && st.status === 'signal') return '확인 요청';
     return q ? '확인 요청' : '추가 조치 없음';
   }
+  function stepCheckText(bad) { return bad ? WARN + ' 출처 확인 필요 ' + bad + '건' : '✓ 모든 문장에 근거 연결'; }
   function checkSummary(bad) {
-    return bad ? WARN + ' 근거 검사 경고 ' + bad + '건 — 출처를 확인하거나 문장을 고치세요.' : '✓ 모든 문장에 근거가 연결되어 있습니다.';
+    return bad ? WARN + ' 근거 검사 경고 ' + bad + '건. 출처를 확인하거나 문장을 고치세요.' : '✓ 모든 문장에 근거가 연결되어 있습니다.';
   }
   function viewRequests(id) {
     var g = sortedShips();
@@ -857,24 +980,31 @@
     var st = statusOf(s);
     var q = s.questions[variantOf(s)];
     var h = '<h1 tabindex="-1">화면 4. 확인 요청·검토 기록 화면</h1>' +
-      '<p class="lead">기관장에게 확인할 질문 초안과 공무감독의 확인 요청·보류·추가 조치 없음 등의 판단 기록 — 공무감독이 질문을 수정하고 판단 사유를 기록합니다.</p>' +
+      '<p class="lead">기관장에게 확인할 질문 초안과 공무감독의 확인 요청·보류·추가 조치 없음 등의 판단 기록을 표시합니다. 공무감독이 질문을 수정하고 판단 사유를 기록합니다.</p>' +
       '<nav class="ship-pick" aria-label="선박 선택">' + SHIPS.map(function (x) {
         return '<a href="#/requests/' + x.id + '"' + (x.id === s.id ? ' aria-current="true"' : '') + '>' + esc(x.name) + ' ' + stateCap(statusOf(x)) + '</a>';
       }).join('') + '</nav>';
     if (!q) {
-      h += '<div class="card"><b>' + esc(s.name) + '</b> — ' + (st.status === 'hold' ? '기준자료를 쌓는 중이라 기관장에게 물을 항목이 없습니다.' : '검토 신호가 없어 질문 초안을 만들지 않았습니다.') + ' 판단 기록은 아래에서 남길 수 있습니다.</div>';
+      h += '<div class="card"><b>' + esc(s.name) + '</b>: ' + (st.status === 'hold' ? '기준자료를 쌓는 중이라 기관장에게 물을 항목이 없습니다.' : '검토 신호가 없어 질문 초안을 만들지 않았습니다.') + ' 판단 기록은 아래에서 남길 수 있습니다.</div>';
     } else {
       var sents = sentencesOf(s);
       var bad = 0;
       var ap = state.approvals[s.id];
       if (st.user_hold && ap) h += '<p class="hold-note"><i class="sw" aria-hidden="true"></i> 공무감독 보류 사유(화면 3): <b>' + esc(ap.reason) + '</b></p>';
-      h += '<div class="flow" aria-label="연계 구조"><span><b>가.</b> 신호 묶음(분석 결과·원문 근거)</span><span class="sep" aria-hidden="true">›</span>' +
-        '<span class="tag-mock"><b>나.</b> 언어모델 자리 — 프로토는 템플릿 모의 응답(실제 호출 없음)</span><span class="sep" aria-hidden="true">›</span>' +
-        '<span><b>다.</b> 근거 검사(규칙): 출처 없는 문장 표시</span><span class="sep" aria-hidden="true">›</span><span><b>라.</b> 공무감독 수정·판단</span></div>';
-      h += '<div class="grid2"><div class="card bundle"><h3>가. 신호 묶음 — ' + esc(s.name) + ' ' + badge(st) + '</h3><div class="kv">' +
+      var preBad = sents.filter(function (x) { return checkSentence(x, q.bundle).length; }).length;
+      var myJ = state.judgments.filter(function (j) { return j.ship_id === s.id; });
+      var waitR = myJ.filter(function (j) { return j.decision === '확인 요청' && !j.reply; }).length;
+      h += '<ol class="stepper" aria-label="연계 구조">' +
+        '<li class="done"><span class="st-n" aria-hidden="true">가</span><span class="st-t">신호 묶음</span><span class="st-c">분석 결과·원문 근거 ' + Object.keys(q.bundle).length + '항목</span></li>' +
+        '<li class="mock"><span class="st-n" aria-hidden="true">나</span><span class="st-t">언어모델 자리</span><span class="st-c">템플릿 모의 응답 ' + sents.length + '문장(실제 호출 없음)</span></li>' +
+        '<li id="stepCheck" class="' + (preBad ? 'warn' : 'done') + '"><span class="st-n" aria-hidden="true">다</span><span class="st-t">근거 검사(규칙)</span><span class="st-c">' + stepCheckText(preBad) + '</span></li>' +
+        '<li class="' + (myJ.length ? 'done' : '') + '"><span class="st-n" aria-hidden="true">라</span><span class="st-t">공무감독 수정·판단</span><span class="st-c">' +
+          (myJ.length ? '판단 기록 ' + myJ.length + '건' + (waitR ? ' · 회신 대기 ' + waitR + '건' : '') : '아직 판단 없음') + '</span></li></ol>';
+      var ts = trendSpec(s, 30, 110, s.name + ' 근거: 최근 30일 보고값과 기대값');
+      h += '<div class="grid2"><div class="card bundle"><h3>가. 신호 묶음: ' + esc(s.name) + ' ' + badge(st) + '</h3>' + (ts ? chartSlot(ts) : '') + '<div class="kv">' +
         Object.keys(q.bundle).map(function (k) { return '<span class="k">' + esc(BUNDLE_LABEL[k] || k) + '</span><span class="num">' + esc(bundleShow(k, q.bundle[k])) + '</span>'; }).join('') +
         '</div><p class="sub" style="margin-top:var(--sp-3)"><a href="#/review/' + s.id + '">근거 상세(화면 2)</a> · <a href="#/reports/' + s.id + '">오늘 원문(화면 3)</a></p></div>';
-      h += '<div class="card"><h3>나·다. 확인 질문 초안과 근거 검사 <span class="tag-mock">모의 응답 — 실제 언어모델 호출 없음</span></h3><div id="sents">';
+      h += '<div class="card"><h3>나·다. 확인 질문 초안과 근거 검사 <span class="tag-mock">모의 응답(실제 언어모델 호출 없음)</span></h3><div id="sents">';
       sents.forEach(function (x, i) {
         var probs = checkSentence(x, q.bundle);
         if (probs.length) bad++;
@@ -886,24 +1016,24 @@
       h += '</div><div class="row" style="margin-top:var(--sp-3)"><button class="btn sm" data-act="add-sent">문장 추가</button><button class="btn sm" data-act="copy">질문 복사</button>' +
         '<button class="btn quiet sm" data-act="reset-sent">초안으로 되돌리기</button></div>' +
         '<p class="sub' + (bad ? ' bad' : '') + '" id="checksum">' + checkSummary(bad) + '</p>' +
-        '<p class="sub">실제 전송 없음 — 검토한 질문은 기존 업무 채널(메일 등)로 직접 전달합니다. 질문은 계측값·운전 조건·정비 이력의 재확인만 담고 원인을 단정하지 않습니다.</p></div></div>';
+        '<p class="sub">실제 전송 없음. 검토한 질문은 기존 업무 채널(메일 등)로 직접 전달합니다. 질문은 계측값·운전 조건·정비 이력의 재확인만 담고 원인을 단정하지 않습니다.</p></div></div>';
     }
     h += '<h2>공무감독 판단 기록</h2><div class="card judge"><fieldset class="seg-radio"><legend class="field-label">판단</legend><div class="seg">' +
       ['확인 요청', '보류', '추가 조치 없음'].map(function (d) { return '<label><input type="radio" name="decision" value="' + d + '"' + (d === defaultDecision(st, q) && !uiDraft.decision || d === uiDraft.decision ? ' checked' : '') + '>' + d + '</label>'; }).join('') +
       '</div></fieldset><label class="field-label" for="reason">판단 사유 <b class="req">필수</b></label>' +
       '<textarea id="reason" rows="2" placeholder="예: 회신의 실린더별 수동 계측값이 보고와 같고 운전 조건 변화 없음">' + esc(uiDraft.reason || '') + '</textarea>' +
       '<p id="reasonErr" class="field-error" hidden>' + WARN + ' 판단 사유를 적어 주세요</p>' +
-      '<div class="row"><button class="btn primary" data-act="save-judgment" data-id="' + s.id + '">판단 기록 저장 — ' + esc(s.name) + '</button><span class="cap">최종 판단은 공무감독이 합니다. 자동 정비 지시는 없습니다.</span></div></div>';
+      '<div class="row"><button class="btn primary" data-act="save-judgment" data-id="' + s.id + '">' + esc(s.name) + ' 판단 기록 저장</button><span class="cap">최종 판단은 공무감독이 합니다. 자동 정비 지시는 없습니다.</span></div></div>';
     h += '<h2>검토 기록</h2>';
     if (!state.judgments.length) h += '<p class="cap">아직 기록이 없습니다.</p>';
     else {
       h += '<div class="table-wrap"><table><thead><tr><th>일시(이 브라우저)</th><th>선박</th><th>판단</th><th>사유</th><th>질문</th><th>기관장 회신</th></tr></thead><tbody>' +
         state.judgments.slice().reverse().map(function (j) {
-          var reply = j.reply ? '<b>' + esc(j.reply.result) + '</b>' + (j.reply.memo ? ' — ' + esc(j.reply.memo) : '') + '<span class="cap">' + esc(j.reply.at) + '</span>'
+          var reply = j.reply ? '<b>' + esc(j.reply.result) + '</b>' + (j.reply.memo ? ': ' + esc(j.reply.memo) : '') + '<span class="cap">' + esc(j.reply.at) + '</span>'
             : j.decision === '확인 요청' ? '<div class="row reply-row"><select data-reply-result="' + j.id + '" aria-label="회신 결과"><option value="" disabled selected>회신 결과 선택</option><option>무이상</option><option>이상</option><option>보류</option></select>' +
-              '<input type="text" data-reply-memo="' + j.id + '" placeholder="회신 요지(사람이 입력)" aria-label="회신 요지" value="' + esc((uiDraft.replies || {})[j.id] || '') + '"><button class="btn sm" data-act="save-reply" data-j="' + j.id + '">회신 기록</button></div>' : '—';
+              '<input type="text" data-reply-memo="' + j.id + '" placeholder="회신 요지(사람이 입력)" aria-label="회신 요지" value="' + esc((uiDraft.replies || {})[j.id] || '') + '"><button class="btn sm" data-act="save-reply" data-j="' + j.id + '">회신 기록</button></div>' : '<span class="cap">해당 없음</span>';
           return '<tr><td class="num" style="white-space:nowrap">' + esc(j.at) + '</td><td>' + esc(j.ship_name) + '</td><td><b>' + esc(j.decision) + '</b></td><td>' + esc(j.reason) +
-            (j.check_warnings ? '<span class="cap">근거 검사 경고 ' + j.check_warnings + '건 상태로 기록</span>' : '') + '</td><td class="q">' + esc(j.question_text || '—') + '</td><td>' + reply + '</td></tr>';
+            (j.check_warnings ? '<span class="cap">근거 검사 경고 ' + j.check_warnings + '건 상태로 기록</span>' : '') + '</td><td class="q">' + esc(j.question_text || '질문 없음') + '</td><td>' + reply + '</td></tr>';
         }).join('') + '</tbody></table></div><p class="sub">회신은 공무감독이 직접 입력합니다. 회신을 언어모델로 \'이상/무이상/보류\' 라벨로 해석하는 기능은 PoC 단계(2.5) 범위입니다.</p>';
     }
     h += '<div class="row" style="margin-top:var(--sp-3)"><button class="btn sm" data-act="export">기록 내보내기(JSON)</button></div>';
@@ -940,7 +1070,7 @@
     var app = document.getElementById('app');
     app.innerHTML = html;
     mountCharts(app);
-    document.querySelectorAll('.tabs a').forEach(function (a) {
+    document.querySelectorAll('.gnb a').forEach(function (a) {
       if (a.getAttribute('data-tab') === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     app.dataset.view = tab;
@@ -980,16 +1110,16 @@
     var s = BY_ID[b.getAttribute('data-id')] || BY_ID[app.dataset.ship] || null;
     if (act === 'approve') {
       state.approvals[s.id] = { decision: 'approved', reason: '', at: nowLocal() }; saveState();
-      pendingFocus = '.result'; stayOn('#/reports/' + s.id); toast(s.name + ' 보고 승인 — 분석에 반영했습니다.');
+      pendingFocus = '.result'; stayOn('#/reports/' + s.id); toast(s.name + ' 보고를 승인해 분석에 반영했습니다.');
     } else if (act === 'hold') {
       var r = (document.getElementById('holdReason') || {}).value || '';
       state.approvals[s.id] = { decision: 'held', reason: r.trim() || '공무감독 보류', at: nowLocal() }; saveState();
-      pendingFocus = '.result'; stayOn('#/reports/' + s.id); toast(s.name + ' 보고 보류 — 분석 보류로 표시합니다.');
+      pendingFocus = '.result'; stayOn('#/reports/' + s.id); toast(s.name + ' 보고를 보류해 분석 보류로 표시합니다.');
     } else if (act === 'undo') {
       var was = (state.approvals[s.id] || {}).decision;
       delete state.approvals[s.id]; saveState();
       pendingFocus = '[data-act="approve"]:not([disabled]), [data-act="hold"]';
-      render(); toast((was === 'held' ? '보류를' : '승인을') + ' 취소했습니다 — 승인 대기로 돌아감');
+      render(); toast((was === 'held' ? '보류를' : '승인을') + ' 취소했습니다. 승인 대기로 돌아갑니다.');
     } else if (act === 'del-sent' || act === 'add-sent' || act === 'reset-sent') {
       captureForm();
       s = currentRequestShip();
@@ -1001,7 +1131,7 @@
     } else if (act === 'copy') {
       s = currentRequestShip();
       var txt = '[' + D.meta.note + ' · 시연용 초안]\n' + questionText(s);
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { toast('질문을 복사했습니다 — 기존 업무 채널에 붙여 넣으세요(자동 전송 없음).'); }, function () { toast('복사할 수 없습니다. 직접 선택해 복사하세요.'); });
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { toast('질문을 복사했습니다. 기존 업무 채널에 붙여 넣으세요(자동 전송 없음).'); }, function () { toast('복사할 수 없습니다. 직접 선택해 복사하세요.'); });
       else toast('복사할 수 없습니다. 직접 선택해 복사하세요.');
     } else if (act === 'save-judgment') {
       var dec = (document.querySelector('input[name="decision"]:checked') || {}).value;
@@ -1073,9 +1203,11 @@
     var cs = document.getElementById('checksum');
     cs.textContent = checkSummary(bad);
     cs.className = 'sub' + (bad ? ' bad' : '');
+    var sc = document.getElementById('stepCheck');
+    if (sc) { sc.className = bad ? 'warn' : 'done'; sc.querySelector('.st-c').textContent = stepCheckText(bad); }
   }
 
-  // 시연 초기화 — 실제 개수를 보여 주는 확인 대화상자
+  // 시연 초기화: 실제 개수를 보여 주는 확인 대화상자
   function confirmReset() {
     var nA = Object.keys(state.approvals).length, nJ = state.judgments.length, nE = Object.keys(state.edits).length;
     function doReset() { state = freshState(); uiDraft = { decision: null, reason: '', replies: {} }; saveState(); render(); toast('시연 기록을 지웠습니다.'); }
